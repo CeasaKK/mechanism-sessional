@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Wiper Mechanism</title>
+  <!-- p5.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.7);
+      --glass-bg: rgba(255,255,255,0.45);
+      --accent-1: #1e3c72;
+      --accent-2: #2a5298;
+      --accent-3: #ff7e5f;
+      --accent-4: #feb47b;
+      --muted: rgba(30,40,60,0.55);
+      --border: rgba(30,40,60,0.08);
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 60%, var(--accent-3) 100%);
+      color:#1e2a3a;
+      min-height:100vh;
+    }
+    .app-wrap{
+      position:relative;
+      width:100%;
+      min-height:100vh;
+      display:flex;
+      flex-direction:row;
+      align-items:center;
+      justify-content:center;
+      gap:0;
+      box-sizing:border-box;
+      padding-top:0;
+      margin-top:120px; /* add margin to push animation below header */
+    }
+    canvas{
+      display:block;
+      border-radius:18px;
+      box-shadow: 0 18px 40px rgba(30,40,60,0.18), 0 1px 0 rgba(255,255,255,0.7);
+      max-width:100%;
+      max-height:80vh;
+      border: 2px solid var(--border);
+      backdrop-filter: blur(8px) saturate(120%);
+      background: linear-gradient(120deg, var(--accent-2) 0%, var(--accent-1) 100%);
+    }
+    .header {
+      position:absolute;
+      left:0;
+      top:0;
+      width:100vw;
+      z-index:30;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:0;
+      pointer-events:none;
+      padding-top:90px; /* increased for more space above animation */
+    }
+    .title {
+      font-family:'Poppins',sans-serif;
+      font-size:2.6rem;
+      font-weight:700;
+      color:var(--accent-4);
+      letter-spacing:0.04em;
+      text-shadow:0 2px 16px rgba(30,40,60,0.18);
+      pointer-events:auto;
+      margin-bottom:0.2em;
+    }
+    .subtitle{
+      font-size:1.1rem;
+      color:var(--muted);
+      font-family:'Inter',sans-serif;
+      pointer-events:auto;
+      margin-bottom:0.8em;
+    }
+    .ui {
+      position:static;
+      margin-left:38px;
+      margin-top:0;
+      min-width:260px;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:22px;
+      background: var(--glass-bg);
+      border-radius:18px;
+      box-shadow: 0 8px 32px rgba(30,40,60,0.13);
+      border:1.5px solid var(--border);
+      padding:28px 22px 22px 22px;
+      backdrop-filter: blur(12px) saturate(120%);
+    }
+    .ui button{
+      background:linear-gradient(90deg,var(--accent-3),var(--accent-4));
+      border:none;
+      padding:10px 18px;
+      border-radius:10px;
+      font-weight:600;
+      font-size:1.1rem;
+      cursor:pointer;
+      color:#fff;
+      box-shadow:0 2px 8px rgba(30,40,60,0.10);
+      transition:background 0.2s;
+    }
+    .ui button:hover{
+      background:linear-gradient(90deg,var(--accent-4),var(--accent-3));
+    }
+    .ui input[type=range]{
+      width:140px;
+      accent-color:var(--accent-2);
+      margin-right:8px;
+    }
+    .ui label{
+      font-size:1rem;
+      color:var(--accent-2);
+      font-family:'Inter',sans-serif;
+      min-width:70px;
+    }
+    .ui .slider-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      width:100%;
+      margin-bottom:2px;
+    }
+    .ui .slider-value{
+      min-width:38px;
+      text-align:right;
+      font-size:1rem;
+      color:var(--muted);
+      font-family:'Inter',sans-serif;
+    }
+    .legend{
+      position:absolute;
+      left:28px;
+      bottom:20px;
+      z-index:20;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      background: var(--glass-bg);
+      padding:10px 12px;
+      border-radius:10px;
+      box-shadow: 0 8px 18px rgba(30,40,60,0.09);
+      border:1px solid var(--border);
+      font-family:'Inter',sans-serif;
+    }
+    .swatch{ width:18px; height:12px; border-radius:4px; }
+    .label{ font-size:15px; color:var(--accent-2); font-weight:600; }
+    @media (max-width:900px){
+      .app-wrap{ flex-direction:column; align-items:center; justify-content:flex-start; height:auto; min-height:0; }
+      .ui{ margin-left:0; margin-top:18px; }
+      canvas{ max-width:98vw; max-height:60vh; }
+      .header{padding-top:18px;}
+      .title{font-size:2rem;}
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Wiper Mechanism</div>
+    <div class="subtitle">Advanced interactive visualization with animation controls</div>
+  </div>
+  <div class="app-wrap">
+    <div style="flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0;">
+      <!-- Canvas will be injected here by p5.js -->
+    </div>
+    <div class="ui" id="controls">
+      <button id="playBtn">Pause</button>
+      <div class="slider-row">
+        <label for="speedSlider">Speed</label>
+        <input id="speedSlider" type="range" min="0" max="3" step="0.02" value="1">
+        <div class="slider-value" id="speedVal">1.00x</div>
+      </div>
+      <div class="slider-row">
+        <label for="zoomSlider">Zoom</label>
+        <input id="zoomSlider" type="range" min="0.15" max="0.6" step="0.01" value="0.3">
+        <div class="slider-value" id="zoomVal">1.00x</div>
+      </div>
+      <div class="slider-row">
+        <label for="xOffsetSlider">X Offset</label>
+        <input id="xOffsetSlider" type="range" min="-400" max="400" step="1" value="0">
+        <div class="slider-value" id="xOffsetVal">0</div>
+      </div>
+      <div class="slider-row">
+        <label for="yOffsetSlider">Y Offset</label>
+        <input id="yOffsetSlider" type="range" min="-400" max="400" step="1" value="0">
+        <div class="slider-value" id="yOffsetVal">0</div>
+      </div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="swatch" style="background:rgb(179,216,255)"></div>
+        <div class="label">Wiper 1 Sweep</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="swatch" style="background:rgb(255,217,179)"></div>
+        <div class="label">Wiper 2 Sweep</div>
+      </div>
+    </div>
+    <script>
+    // -----------------------------------------------------
+    // Parameters (ported from MATLAB)
+    // -----------------------------------------------------
+    let link1 = 720;         // length of link 1
+    let link2 = 180;         // length of link 2
+    let link4 = 360;         // length of link 4
+    let link3 = Math.sqrt(link1*link1 + link2*link2 - link4*link4); // length of link 3
+    let link5 = 450 / Math.cos(Math.PI/3); // length of link 5
+
+    let rotationCycles = 10;
+    let dTheta2 = 5 * Math.PI / 180;      // step of theta2
+
+    let theta2Arr = [];
+    let theta3Minus = [];
+    let theta5Minus = [];
+
+    let curve1_x = [];
+    let curve1_y = [];
+    let curve2_x = [];
+    let curve2_y = [];
+
+    let curve3_x = [];
+    let curve3_y = [];
+    let curve4_x = [];
+    let curve4_y = [];
+
+    let minIdx1 = 0, maxIdx1 = 0;
+    let minIdx2 = 0, maxIdx2 = 0;
+
+    // Patch vertex arrays (world coords)
+    let patch1 = [];  // [{x,y}, ...]
+    let patch2 = [];
+
+    // Simple color definitions
+    let metallicGray = [46, 46, 46];
+    let wiperBase  = [18, 115, 199];
+    let wiperBase2 = [217, 64, 31];
+
+    // Scaling and coordinate transform
+    let SCALE = 0.3;   // world units to pixels (default)
+    let X_OFFSET = 0;  // user adjustable
+    let Y_OFFSET = window.innerHeight/2 - 100; // center animation vertically, user adjustable
+    function wx(x) {
+      // world x -> screen x
+      return width/2 + x * SCALE + X_OFFSET;
+    }
+    function wy(y) {
+      // world y (positive up) -> screen y (positive down)
+      return height - (y * SCALE + Y_OFFSET);
+    }
+
+    // -----------------------------------------------------
+    // Precompute all kinematics & sweep curves
+    // -----------------------------------------------------
+    function precompute() {
+      // Build theta2 samples
+      let tmax = 2 * Math.PI * rotationCycles;
+      for (let t = 0; t <= tmax + 1e-9; t += dTheta2) {
+        theta2Arr.push(t);
+      }
+
+      let n = theta2Arr.length;
+      let theta5Base = new Array(n);
+
+      // First pass: compute theta4_minus and base theta5_minus
+      for (let k = 0; k < n; k++) {
+        let t2 = theta2Arr[k];
+
+        let term1 = Math.sin(t2);
+        let term2 = link1 / link2 + Math.cos(t2);
+        let term3 = (link1*link1 + link2*link2 - link3*link3 + link4*link4) /
+                    (2 * link2 * link4) + (link1 / link4) * Math.cos(t2);
+        let rootTerm = Math.sqrt(term1*term1 + term2*term2 - term3*term3);
+
+        // theta4_minus (unused directly but follows MATLAB structure)
+        // let theta4_minus = 2 * Math.atan( (term1 - rootTerm) / (term2 + term3) );
+
+        theta5Base[k] = Math.PI + 2 * Math.atan( (term1 - rootTerm) / (term2 + term3) );
+      }
+
+      // Compute theta3_minus
+      theta3Minus = new Array(n);
+      for (let k = 0; k < n; k++) {
+        let t2 = theta2Arr[k];
+
+        let term1 = Math.sin(t2);
+        let term2 = link1 / link2 + Math.cos(t2);
+        let term3 = -(
+          (link1*link1 + link2*link2 + link3*link3 - link4*link4) /
+          (2 * link2 * link3) + (link1 / link3) * Math.cos(t2)
+        );
+        let rootTerm = Math.sqrt(term1*term1 + term2*term2 - term3*term3);
+        theta3Minus[k] = 2 * Math.atan((term1 - rootTerm) / (term2 + term3));
+      }
+
+      // Adjust wiping range for link 5
+      let startWipeAngle = Math.min(...theta5Base);
+      let angleDiff = Math.PI/3 - startWipeAngle;
+
+      theta5Minus = new Array(n);
+      for (let k = 0; k < n; k++) {
+        let t2 = theta2Arr[k];
+
+        let term1 = Math.sin(t2);
+        let term2 = link1 / link2 + Math.cos(t2);
+        let term3 = (link1*link1 + link2*link2 - link3*link3 + link4*link4) /
+                    (2 * link2 * link4) + (link1 / link4) * Math.cos(t2);
+        let rootTerm = Math.sqrt(term1*term1 + term2*term2 - term3*term3);
+
+        theta5Minus[k] = Math.PI + 2 * Math.atan((term1 - rootTerm) / (term2 + term3)) + angleDiff;
+      }
+
+      // Build swept curves for both wipers
+      curve1_x = new Array(n);
+      curve1_y = new Array(n);
+      curve2_x = new Array(n);
+      curve2_y = new Array(n);
+
+      curve3_x = new Array(n);
+      curve3_y = new Array(n);
+      curve4_x = new Array(n);
+      curve4_y = new Array(n);
+
+      for (let k = 0; k < n; k++) {
+        let a = theta5Minus[k];
+
+        // Wiper 1 pivot O4
+        let pivot1_x = -link1;
+        let pivot1_y = 0;
+        let Cx = pivot1_x + link5 * Math.cos(a);
+        let Cy = pivot1_y + link5 * Math.sin(a);
+
+        // Blade tips at ±400 in y (world)
+        curve1_x[k] = Cx;
+        curve1_y[k] = Cy + 400;
+        curve2_x[k] = Cx;
+        curve2_y[k] = Cy - 400;
+
+        // Wiper 2 pivot at O5 = O4 - 900 (x direction)
+        let pivot2_x = pivot1_x - 900;
+        let pivot2_y = 0;
+        let Dx = pivot2_x + link5 * Math.cos(a);
+        let Dy = pivot2_y + link5 * Math.sin(a);
+
+        curve3_x[k] = Dx;
+        curve3_y[k] = Dy + 400;
+        curve4_x[k] = Dx;
+        curve4_y[k] = Dy - 400;
+      }
+
+      // Find min/max indices for wiper 1 sweep
+      let min_x1 = curve1_x[0], max_x1 = curve1_x[0];
+      minIdx1 = 0; maxIdx1 = 0;
+      for (let k = 1; k < n; k++) {
+        if (curve1_x[k] < min_x1) {
+          min_x1 = curve1_x[k];
+          minIdx1 = k;
+        }
+        if (curve1_x[k] > max_x1) {
+          max_x1 = curve1_x[k];
+          maxIdx1 = k;
+        }
+      }
+
+      // Find min/max indices for wiper 2 sweep
+      let min_x2 = curve3_x[0], max_x2 = curve3_x[0];
+      minIdx2 = 0; maxIdx2 = 0;
+      for (let k = 1; k < n; k++) {
+        if (curve3_x[k] < min_x2) {
+          min_x2 = curve3_x[k];
+          minIdx2 = k;
+        }
+        if (curve3_x[k] > max_x2) {
+          max_x2 = curve3_x[k];
+          maxIdx2 = k;
+        }
+      }
+
+      // Build patch polygons (world coords)
+      patch1 = [];
+      for (let k = minIdx1; k <= maxIdx1; k++) {
+        patch1.push({ x: curve1_x[k], y: curve1_y[k] });
+      }
+      for (let k = maxIdx1; k >= minIdx1; k--) {
+        patch1.push({ x: curve2_x[k], y: curve2_y[k] });
+      }
+
+      patch2 = [];
+      for (let k = minIdx2; k <= maxIdx2; k++) {
+        patch2.push({ x: curve3_x[k], y: curve3_y[k] });
+      }
+      for (let k = maxIdx2; k >= minIdx2; k--) {
+        patch2.push({ x: curve4_x[k], y: curve4_y[k] });
+      }
+    }
+
+    // -----------------------------------------------------
+    // p5.js setup & draw
+    // -----------------------------------------------------
+    let play = true;
+    let indexFloat = 0;
+    let speed = 1.0; // frames-to-advance per draw
+
+    function setup() {
+      let c = createCanvas(Math.min(1200, window.innerWidth*0.7), Math.min(700, window.innerHeight*0.8));
+      c.parent(document.querySelector('.app-wrap > div'));
+      frameRate(60);
+      precompute();
+      // Wire UI controls
+      const playBtn = document.getElementById('playBtn');
+      const speedSlider = document.getElementById('speedSlider');
+      const speedVal = document.getElementById('speedVal');
+      const zoomSlider = document.getElementById('zoomSlider');
+      const zoomVal = document.getElementById('zoomVal');
+      const xOffsetSlider = document.getElementById('xOffsetSlider');
+      const xOffsetVal = document.getElementById('xOffsetVal');
+      const yOffsetSlider = document.getElementById('yOffsetSlider');
+      const yOffsetVal = document.getElementById('yOffsetVal');
+
+      playBtn.addEventListener('click', ()=>{
+        play = !play;
+        playBtn.textContent = play? 'Pause' : 'Play';
+      });
+      speedSlider.addEventListener('input', ()=>{
+        speed = parseFloat(speedSlider.value);
+        speedVal.textContent = speed.toFixed(2) + 'x';
+      });
+      zoomSlider.addEventListener('input', ()=>{
+        SCALE = parseFloat(zoomSlider.value);
+        zoomVal.textContent = (SCALE/0.3).toFixed(2) + 'x';
+      });
+      xOffsetSlider.addEventListener('input', ()=>{
+        X_OFFSET = parseInt(xOffsetSlider.value);
+        xOffsetVal.textContent = X_OFFSET;
+      });
+      yOffsetSlider.addEventListener('input', ()=>{
+        Y_OFFSET = window.innerHeight/2 - 100 + parseInt(yOffsetSlider.value);
+        yOffsetVal.textContent = yOffsetSlider.value;
+      });
+      // Set initial values
+      speedVal.textContent = speed.toFixed(2) + 'x';
+      zoomVal.textContent = (SCALE/0.3).toFixed(2) + 'x';
+      xOffsetVal.textContent = X_OFFSET;
+      yOffsetVal.textContent = '0';
+      // Ensure the canvas layer will let UI be visible on top
+      const controls = document.getElementById('controls');
+      controls.style.pointerEvents = 'auto';
+    }
+
+    function windowResized() {
+      resizeCanvas(window.innerWidth, window.innerHeight);
+    }
+
+    function drawPatch(p, fillCol, alpha) {
+      noStroke();
+      fill(fillCol[0], fillCol[1], fillCol[2], alpha);
+      beginShape();
+      for (let i = 0; i < p.length; i++) {
+        vertex(wx(p[i].x), wy(p[i].y));
+      }
+      endShape(CLOSE);
+
+      // edge
+      noFill();
+      stroke(30,30,30,120);
+      strokeWeight(1.4);
+      beginShape();
+      for (let i = 0; i < p.length; i++) {
+        vertex(wx(p[i].x), wy(p[i].y));
+      }
+      endShape(CLOSE);
+    }
+
+    function drawGrid(){
+      // subtle grid to add depth
+      push();
+      stroke(10,30,50,10);
+      strokeWeight(1);
+      let gx = 80; // world spacing in pixels
+      for(let x=0; x<width; x+=gx){ line(x,0,x,height); }
+      for(let y=0; y<height; y+=gx){ line(0,y,width,y); }
+      pop();
+    }
+
+    function draw() {
+      background(255);
+
+      // subtle vignette/background overlay
+      push();
+      noStroke();
+      fill(255, 255, 255, 0);
+      rect(0,0,width,height);
+      pop();
+
+      // gentle grid in the background
+      drawGrid();
+
+      // Static frame line O2 - O4 - O5
+      let O2_x = 0,        O2_y = 0;
+      let O4_x = -link1,   O4_y = 0;
+      let O5_x = O4_x - 900, O5_y = 0;
+
+      // Draw swept area patches first with slightly transparent fills
+      drawPatch(patch1, [179, 216, 255], 110); // bluish
+      drawPatch(patch2, [255, 217, 179], 110); // orange-ish
+
+      // Pick index for current frame using play/speed controls
+      let n = theta2Arr.length;
+      if (play) indexFloat = (indexFloat + speed) % n;
+      let index = Math.floor(indexFloat) % n;
+      let t2 = theta2Arr[index];
+      let t3 = theta3Minus[index];
+      let t5 = theta5Minus[index];
+
+      // Positions for crank & coupler (O2-A-B-O4)
+      let A_x = O2_x + link2 * Math.cos(t2);
+      let A_y = O2_y + link2 * Math.sin(t2);
+      let B_x = A_x  + link3 * Math.cos(t3);
+      let B_y = A_y  + link3 * Math.sin(t3);
+
+      // Wiper endpoints
+      let C_x = O4_x + link5 * Math.cos(t5);
+      let C_y = O4_y + link5 * Math.sin(t5);
+
+      let D_x = (O4_x - 900) + link5 * Math.cos(t5);
+      let D_y = O4_y + link5 * Math.sin(t5);
+
+      // Blade tips (±400)
+      let W1_x = C_x, W1_y = C_y + 400;
+      let W2_x = C_x, W2_y = C_y - 400;
+
+      let W3_x = D_x, W3_y = D_y + 400;
+      let W4_x = D_x, W4_y = D_y - 400;
+
+      // Draw static base line
+      stroke(0,120);
+      strokeWeight(2);
+      line(wx(O2_x), wy(O2_y), wx(O4_x), wy(O4_y));
+      line(wx(O4_x), wy(O4_y), wx(O5_x), wy(O5_y));
+
+      // Draw mechanism links (O2-A-B-O4-C-D-O5)
+      stroke(metallicGray[0], metallicGray[1], metallicGray[2]);
+      strokeWeight(4);
+      noFill();
+      strokeCap(ROUND);
+
+      beginShape();
+      vertex(wx(O2_x), wy(O2_y));
+      vertex(wx(A_x),  wy(A_y));
+      vertex(wx(B_x),  wy(B_y));
+      vertex(wx(O4_x), wy(O4_y));
+      vertex(wx(C_x),  wy(C_y));
+      vertex(wx(D_x),  wy(D_y));
+      vertex(wx(O5_x), wy(O5_y));
+      endShape();
+
+      // Joints
+      fill(240);
+      stroke(0);
+      strokeWeight(2);
+      let jointR = 7;
+      circle(wx(O2_x), wy(O2_y), 2*jointR);
+      circle(wx(A_x),  wy(A_y),  2*jointR);
+      circle(wx(B_x),  wy(B_y),  2*jointR);
+      circle(wx(O4_x), wy(O4_y), 2*jointR);
+      circle(wx(C_x),  wy(C_y),  2*jointR);
+      circle(wx(D_x),  wy(D_y),  2*jointR);
+      circle(wx(O5_x), wy(O5_y), 2*jointR);
+
+      // Draw wiper 1 (blue) - rounded stroke
+      stroke(wiperBase[0], wiperBase[1], wiperBase[2]);
+      strokeWeight(10);
+      strokeCap(ROUND);
+      line(wx(W1_x), wy(W1_y), wx(W2_x), wy(W2_y));
+
+      // Draw wiper 2 (orange-red)
+      stroke(wiperBase2[0], wiperBase2[1], wiperBase2[2]);
+      strokeWeight(10);
+      strokeCap(ROUND);
+      line(wx(W3_x), wy(W3_y), wx(W4_x), wy(W4_y));
+
+      // Tips as markers
+      fill(0);
+      noStroke();
+      circle(wx(C_x), wy(C_y), 14);
+      circle(wx(D_x), wy(D_y), 14);
+
+      // Labels for reference
+      textSize(14);
+      fill(10,30,50);
+      noStroke();
+      text("O₂", wx(O2_x)+8, wy(O2_y)-8);
+      text("O₄", wx(O4_x)+8, wy(O4_y)-8);
+      text("O₅", wx(O5_x)+8, wy(O5_y)-8);
+    }
+    </script>
+  </div>
+</body>
+</html>
