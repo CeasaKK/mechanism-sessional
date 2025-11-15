@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Wiper Mechanism Kinematic Analysis</title>
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async
+            src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 32px; }
+        h1, h2, h3 { color: #20436a; }
+        .equation { background: #f5f5f5; border-left: 4px solid #20436a; padding: 14px; margin: 18px 0; }
+        .block { margin-bottom: 38px; }
+        .nav-btn {
+            background: linear-gradient(90deg,#1e3c72,#2a5298);
+            color: #fff;
+            font-family: 'Segoe UI',sans-serif;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 22px;
+            margin-bottom: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(30,40,60,0.10);
+            transition: background 0.2s;
+            display: inline-block;
+        }
+        .nav-btn:hover {
+            background: linear-gradient(90deg,#2a5298,#1e3c72);
+        }
+        .matlab-section {
+            margin-top: 48px;
+        }
+        .matlab-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #20436a;
+            margin-bottom: 12px;
+        }
+        .matlab-code {
+            background: #23272e;
+            color: #e3e3e3;
+            font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+            font-size: 0.98rem;
+            border-radius: 8px;
+            padding: 18px 16px;
+            overflow-x: auto;
+            white-space: pre;
+            box-shadow: 0 2px 12px rgba(30,40,60,0.10);
+            max-height: 480px;
+        }
+    </style>
+</head>
+<body>
+    <button class="nav-btn" onclick="window.location.href='i.html'">← Back to Home</button>
+    <h1>Wiper Mechanism Kinematic Analysis</h1>
+    <div class="matlab-section">
+        <div class="matlab-title">MATLAB Code for Wiper Mechanism (Two Swept Area Patches)</div>
+        <div class="matlab-code">
+%% Wiper mechanism with TWO swept area patches (900 offset, equal heights)
+clc;
+clear variables;
+close all;
+
+% -------------------------
+% Mechanism parameters
+% -------------------------
+link1 = 720; % Length of link 1
+link2 = 180; % Length of link 2
+link4 = 360; % Length of link 4
+link3 = sqrt(link1^2 + link2^2 - link4^2); % Length of link 3
+link5 = 450 / cos(pi/3); % Length of link 5
+
+rotation_cycles = 10; % Number of complete rotations
+theta2 = 0 : 5*pi/180 : 2*pi*rotation_cycles; % input motion samples
+
+% -------------------------
+% Visual / timing settings
+% -------------------------
+FPS = 30;
+frameDelay = 1 / FPS;
+if exist('frameDelay','var') && ~isempty(frameDelay)
+    dt = frameDelay;
+else
+    dt = 1;
+    warning('frameDelay not found. Using dt = 1 (arbitrary units).');
+end
+
+trailLen = 80;           % number of trail segments (fading trail)
+trailSegs = trailLen;
+
+metallicGray = [0.18 0.18 0.18];
+wiperBase  = [0.07 0.45 0.78];    % color for wiper 1
+wiperBase2 = [0.85 0.25 0.12];   % color for wiper 2 (distinct)
+shadowAlpha = 0.05;
+
+% -------------------------
+% Preallocate angle arrays
+% -------------------------
+theta4_minus = nan(size(theta2));
+theta5_minus = nan(size(theta2));
+theta3_minus = nan(size(theta2));
+
+% -------------------------
+% Compute theta4_minus and initial theta5_minus
+% -------------------------
+for k = 1:length(theta2)
+    t2 = theta2(k);
+    term1 = sin(t2);
+    term2 = link1 / link2 + cos(t2);
+    term3 = (link1^2 + link2^2 - link3^2 + link4^2) / (2 * link2 * link4) + (link1 / link4) * cos(t2);
+    rootTerm = sqrt(term1^2 + term2^2 - term3^2);
+    theta4_minus(k) = 2 * atan( (term1 - rootTerm) / (term2 + term3) );
+    theta5_minus(k) = pi + 2 * atan( (term1 - rootTerm) / (term2 + term3) );
+end
+
+% -------------------------
+% Compute theta3_minus
+% -------------------------
+for k = 1:length(theta2)
+    t2 = theta2(k);
+    term1 = sin(t2);
+    term2 = link1 / link2 + cos(t2);
+    term3 = - ( (link1^2 + link2^2 + link3^2 - link4^2) / (2 * link2 * link3) + (link1 / link3) * cos(t2) );
+    rootTerm = sqrt(term1^2 + term2^2 - term3^2);
+    theta3_minus(k) = 2 * atan( (term1 - rootTerm) / (term2 + term3) );
+end
+
+% -------------------------
+% Adjust wiping range for link 5 (optional shift)
+% -------------------------
+start_wipe_angle = min(theta5_minus);
+angle_diff = (pi/3) - start_wipe_angle;
+
+for k = 1:length(theta2)
+    t2 = theta2(k);
+    term1 = sin(t2);
+    term2 = link1 / link2 + cos(t2);
+    term3 = (link1^2 + link2^2 - link3^2 + link4^2) / (2 * link2 * link4) + (link1 / link4) * cos(t2);
+    rootTerm = sqrt(term1^2 + term2^2 - term3^2);
+    theta5_minus(k) = pi + 2 * atan( (term1 - rootTerm) / (term2 + term3) ) + angle_diff;
+end
+
+% -------------------------
+% Wiping curves for BOTH wipers
+% -------------------------
+% Wiper 1 swept area
+curve1_x = nan(size(theta5_minus));
+curve1_y = nan(size(theta5_minus));
+curve2_x = nan(size(theta5_minus));
+curve2_y = nan(size(theta5_minus));
+
+% Wiper 2 swept area (900 offset, same height as wiper 1)
+curve3_x = nan(size(theta5_minus));
+curve3_y = nan(size(theta5_minus));
+curve4_x = nan(size(theta5_minus));
+curve4_y = nan(size(theta5_minus));
+
+for k = 1:length(theta5_minus)
+    a = theta5_minus(k);
+
+    % ----- Wiper 1 pivot at O4 = (-link1, 0) -----
+    pivot1_x = -link1;
+    pivot1_y = 0;
+    curve1_x(k) = pivot1_x + link5 * cos(a);
+    curve1_y(k) = pivot1_y + 400 + link5 * sin(a);
+    curve2_x(k) = pivot1_x + link5 * cos(a);
+    curve2_y(k) = pivot1_y - 400 + link5 * sin(a);
+
+    % ----- Wiper 2 pivot at O5 = O4 - 900 -----
+    O4_x = -link1;
+    O4_y = 0;
+    pivot2_x = O4_x - 900;  % 900 offset between wiper pivots
+    pivot2_y = 0;
+
+    % Link 5 end for wiper 2 (D_x, D_y)
+    D_x = pivot2_x + link5 * cos(a);
+    D_y = pivot2_y + link5 * sin(a);
+
+    % Blade tips (±400) => same height as wiper 1
+    curve3_x(k) = D_x;
+    curve3_y(k) = D_y + 400;
+    curve4_x(k) = D_x;
+    curve4_y(k) = D_y - 400;
+end
+
+[min_x,  min_idx]  = min(curve1_x);
+[max_x,  max_idx]  = max(curve1_x);
+[min_x2, min_idx2] = min(curve3_x);
+[max_x2, max_idx2] = max(curve3_x);
+
+% -------------------------
+% Figure and graphics setup
+% -------------------------
+figure('Color', [1 1 1], 'Renderer', 'opengl');
+colormap_lines = jet(length(theta2)); % color ramp for markers
+
+% ===== PATCH 1: Wiper 1 swept area =====
+px = [ curve1_x(min_idx:max_idx) , fliplr(curve2_x(min_idx:max_idx)) ];
+py = [ curve1_y(min_idx:max_idx) , fliplr(curve2_y(min_idx:max_idx)) ];
+
+hPatch = patch('XData', px, 'YData', py, ...
+    'FaceColor', [0.7 0.85 1.0], 'EdgeColor', 'none', 'FaceAlpha', 0.35);
+hold on;
+hPatchEdge = plot(px, py, '-', 'Color', [0.12 0.12 0.12], 'LineWidth', 1.2);
+
+% ===== PATCH 2: Wiper 2 swept area (900 offset, equal height) =====
+px2 = [ curve3_x(min_idx2:max_idx2) , fliplr(curve4_x(min_idx2:max_idx2)) ];
+py2 = [ curve3_y(min_idx2:max_idx2) , fliplr(curve4_y(min_idx2:max_idx2)) ];
+
+hPatch2 = patch('XData', px2, 'YData', py2, ...
+    'FaceColor', [1.0 0.85 0.7], 'EdgeColor', 'none', 'FaceAlpha', 0.35);
+hPatchEdge2 = plot(px2, py2, '-', 'Color', [0.12 0.12 0.12], 'LineWidth', 1.2);
+
+% -------------------------
+% Static skeleton (900 offset)
+% -------------------------
+O2_x = 0;       O2_y = 0;
+O4_x = -link1;  O4_y = 0;
+O5_x = O4_x - 900;  O5_y = 0;   % 900 offset for second pivot
+
+plot([O2_x O4_x O5_x], [O2_y O4_y O5_y], '--k', 'LineWidth', 1.2);
+
+% -------------------------
+% Moving parts graphics objects
+% -------------------------
+hStruct = plot(nan, nan, '-o', 'LineWidth', 3, 'MarkerSize', 7, ...
+    'MarkerFaceColor', [0.95 0.95 0.95], 'Color', metallicGray, 'LineJoin', 'round');
+
+hWiper  = plot(nan, nan, '-', 'LineWidth', 8, 'Color', wiperBase,  'LineJoin', 'round');
+hWiper2 = plot(nan, nan, '-', 'LineWidth', 8, 'Color', wiperBase2, 'LineJoin', 'round');
+
+hTip  = plot(nan, nan, 'o', 'MarkerSize', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k');
+hTip2 = plot(nan, nan, 'o', 'MarkerSize', 10, 'MarkerFaceColor', 'k', 'MarkerEdgeColor', 'k');
+
+hShadow = patch('XData', nan(1,5), 'YData', nan(1,5), ...
+    'FaceColor', [0.6 0.8 1.0], 'EdgeColor', 'none', 'FaceAlpha', 0.25);
+
+hShadow2 = patch('XData', nan(1,5), 'YData', nan(1,5), ...
+    'FaceColor', [1.0 0.85 0.8], 'EdgeColor', 'none', 'FaceAlpha', 0.25);
+
+% -------------------------
+% Trail objects
+% -------------------------
+hTrail  = gobjects(trailSegs,1);
+hTrail2 = gobjects(trailSegs,1);
+for s = 1:trailSegs
+    hTrail(s)  = plot(nan, nan, '-', 'LineWidth', 2.6, 'Color', [0.15 0.15 0.15]);
+    hTrail2(s) = plot(nan, nan, '-', 'LineWidth', 3.0, 'Color', [0.65 0.18 0.12]);
+end
+
+% Bring patches to bottom and trails to top
+uistack(hPatch, 'bottom');
+uistack(hPatch2, 'bottom');
+for s = 1:trailSegs
+    uistack(hTrail(s),  'top');
+    uistack(hTrail2(s), 'top');
+end
+
+% -------------------------
+% Static annotations
+% -------------------------
+plot(0,0,'+','MarkerSize',10,'Color','k');
+text(10,10,'O_2','Color','k');
+
+plot(curve1_x(min_idx), curve1_y(min_idx), 's', 'MarkerSize', 8, ...
+    'MarkerFaceColor', 'r', 'MarkerEdgeColor', 'k');
+text(curve1_x(min_idx)+10, curve1_y(min_idx), 'start (W1)', 'Color', 'k', 'FontWeight', 'bold');
+
+plot(curve1_x(max_idx), curve1_y(max_idx), 's', 'MarkerSize', 8, ...
+    'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k');
+text(curve1_x(max_idx)+10, curve1_y(max_idx), 'end (W1)', 'Color', 'k', 'FontWeight', 'bold');
+
+plot(curve3_x(min_idx2), curve3_y(min_idx2), 's', 'MarkerSize', 8, ...
+    'MarkerFaceColor', 'r', 'MarkerEdgeColor', 'k');
+text(curve3_x(min_idx2)+10, curve3_y(min_idx2), 'start (W2)', 'Color', 'k', 'FontWeight', 'bold');
+
+plot(curve3_x(max_idx2), curve3_y(max_idx2), 's', 'MarkerSize', 8, ...
+    'MarkerFaceColor', 'b', 'MarkerEdgeColor', 'k');
+text(curve3_x(max_idx2)+10, curve3_y(max_idx2), 'end (W2)', 'Color', 'k', 'FontWeight', 'bold');
+
+axis equal;
+xlim([-2000, 1000]);
+ylim([-500, 1600]);
+grid on;
+set(gca, 'Color', [1 1 1], 'XColor', [0 0 0], 'YColor', [0 0 0]);
+title('Wiper Mechanism with TWO Swept Area Patches (900 offset, equal heights)', ...
+      'Color', [0 0 0], 'FontWeight', 'normal');
+
+% -------------------------
+% Trace buffers
+% -------------------------
+traceN = trailSegs + 20;
+traceX  = nan(1, traceN); traceY  = nan(1, traceN); traceIdx  = 0;
+traceX2 = nan(1, traceN); traceY2 = nan(1, traceN); traceIdx2 = 0;
+drawnow;
+
+% -------------------------
+% Animation loop
+% -------------------------
+for k = 1:length(theta2)
+    % Input crank and coupler
+    O2_x = 0; O2_y = 0;
+    A_x = O2_x + link2 * cos(theta2(k));
+    A_y = O2_y + link2 * sin(theta2(k));
+    B_x = A_x + link3 * cos(theta3_minus(k));
+    B_y = A_y + link3 * sin(theta3_minus(k));
+
+    % Patch shapes (unchanging geometry)
+    px  = [ curve1_x(min_idx:max_idx) , fliplr(curve2_x(min_idx:max_idx)) ];
+    py  = [ curve1_y(min_idx:max_idx) , fliplr(curve2_y(min_idx:max_idx)) ];
+    px2 = [ curve3_x(min_idx2:max_idx2) , fliplr(curve4_x(min_idx2:max_idx2)) ];
+    py2 = [ curve3_y(min_idx2:max_idx2) , fliplr(curve4_y(min_idx2:max_idx2)) ];
+
+    % Wiper link endpoints and pivots
+    O4_x = -link1; O4_y = 0;
+
+    C_x = O4_x + link5 * cos(theta5_minus(k));
+    C_y = O4_y + link5 * sin(theta5_minus(k));
+
+    % 900 offset for second wiper
+    D_x = (O4_x - 900) + link5 * cos(theta5_minus(k));
+    D_y = O4_y + link5 * sin(theta5_minus(k));
+
+    O5_x = O4_x - 900;  O5_y = 0;
+
+    % Wiper 1 blade tips (±400)
+    W1_x = C_x; W1_y = C_y + 400;
+    W2_x = C_x; W2_y = C_y - 400;
+
+    % Wiper 2 blade tips (±400, equal height to wiper 1)
+    W3_x = D_x; W3_y = D_y + 400;
+    W4_x = D_x; W4_y = D_y - 400;
+
+    % Structure connectivity
+    structure_x = [O2_x A_x B_x O4_x C_x D_x O5_x];
+    structure_y = [O2_y A_y B_y O4_y C_y D_y O5_y];
+
+    wiper_x  = [W1_x W2_x];
+    wiper_y  = [W1_y W2_y];
+    wiper2_x = [W3_x W4_x];
+    wiper2_y = [W3_y W4_y];
+
+    % Update patch edges
+    set(hPatchEdge,  'XData', px,  'YData', py);
+    set(hPatchEdge2, 'XData', px2, 'YData', py2);
+
+    % --------------- Trail for wiper 1 ---------------
+    traceIdx = traceIdx + 1;
+    if traceIdx > traceN, traceIdx = 1; end
+    traceX(traceIdx) = C_x;
+    traceY(traceIdx) = C_y;
+
+    actualFilled = min(k, traceN);
+    recentCount = min(actualFilled, trailSegs + 2);
+    if recentCount >= 2
+        idxs = mod((traceIdx-recentCount+1:traceIdx)-1, traceN) + 1;
+        ptsX = traceX(idxs);
+        ptsY = traceY(idxs);
+        numPts = numel(ptsX);
+        for s = 1:min(trailSegs, numPts-1)
+            sx = [ptsX(s) ptsX(s+1)];
+            sy = [ptsY(s) ptsY(s+1)];
+            set(hTrail(s), 'XData', sx, 'YData', sy, 'Visible', 'on');
+            fadeFrac = s / trailSegs;
+            segCol = (1-fadeFrac) * wiperBase + fadeFrac * [1 1 1];
+            segCol = min(1, max(0, segCol));
+            set(hTrail(s), 'LineWidth', 2.5*(1 - 0.5*fadeFrac), 'Color', segCol);
+        end
+        for s = (numPts):trailSegs
+            set(hTrail(s), 'XData', nan, 'YData', nan);
+        end
+    end
+
+    % --------------- Trail for wiper 2 ---------------
+    traceIdx2 = traceIdx2 + 1;
+    if traceIdx2 > traceN, traceIdx2 = 1; end
+    traceX2(traceIdx2) = D_x;
+    traceY2(traceIdx2) = D_y;
+
+    actualFilled2 = min(k, traceN);
+    recentCount2 = min(actualFilled2, trailSegs + 2);
+    if recentCount2 >= 2
+        idxs2 = mod((traceIdx2-recentCount2+1:traceIdx2)-1, traceN) + 1;
+        ptsX2 = traceX2(idxs2);
+        ptsY2 = traceY2(idxs2);
+        numPts2 = numel(ptsX2);
+        for s = 1:min(trailSegs, numPts2-1)
+            sx2 = [ptsX2(s) ptsX2(s+1)];
+            sy2 = [ptsY2(s) ptsY2(s+1)];
+            set(hTrail2(s), 'XData', sx2, 'YData', sy2, 'Visible', 'on');
+            fadeFrac2 = s / trailSegs;
+            segCol2 = (1-fadeFrac2) * wiperBase2 + fadeFrac2 * [1 1 1];
+            segCol2 = min(1, max(0, segCol2));
+            set(hTrail2(s), 'Color', segCol2, 'LineWidth', 3.0*(1 - 0.5*fadeFrac2));
+        end
+        for s = (numPts2):trailSegs
+            set(hTrail2(s), 'XData', nan, 'YData', nan);
+        end
+    end
+
+    % --------------- Update moving graphics ---------------
+    set(hStruct, 'XData', structure_x, 'YData', structure_y, ...
+        'Color', metallicGray, 'MarkerFaceColor', [0.95 0.95 0.95]);
+
+    set(hWiper, 'XData', wiper_x, 'YData', wiper_y, ...
+        'Color', 0.6*colormap_lines(k,:) + 0.2, 'LineWidth', 8);
+
+    set(hWiper2, 'XData', wiper2_x, 'YData', wiper2_y, ...
+        'Color', 0.5*wiperBase2 + 0.5*colormap_lines(k,:), 'LineWidth', 8);
+
+    set(hTip, 'XData', C_x, 'YData', C_y, ...
+        'MarkerSize', 10 + 3*sin(k/10), 'MarkerFaceColor', colormap_lines(k,:), 'MarkerEdgeColor', 'k');
+
+    set(hTip2, 'XData', D_x, 'YData', D_y, ...
+        'MarkerSize', 10 + 3*cos(k/12), 'MarkerFaceColor', colormap_lines(end-k+1,:), 'MarkerEdgeColor', 'k');
+
+    % Shadows
+    shX = C_x + [-14 -7 0 7 14];
+    shY = C_y - 18 + [-2 -6 -8 -6 -2];
+    set(hShadow, 'XData', shX, 'YData', shY, ...
+        'FaceColor', [0.6 0.8 1.0], 'FaceAlpha', 0.25);
+
+    shX2 = D_x + [-12 -6 0 6 12];
+    shY2 = D_y - 16 + [-2 -5 -7 -5 -2];
+    set(hShadow2, 'XData', shX2, 'YData', shY2, ...
+        'FaceColor', [1.0 0.85 0.8], 'FaceAlpha', 0.25);
+
+    % Keep trails on top periodically
+    if mod(k, 10) == 1
+        for s = 1:trailSegs
+            uistack(hTrail(s),  'top');
+            uistack(hTrail2(s), 'top');
+        end
+    end
+
+    drawnow limitrate;
+    pause(frameDelay);
+end
+        </div>
+    </div>
+
+    <div class="block">
+        <h2>Displacement Analysis</h2>
+        <p>Input crank position at time \( t \):</p>
+        <div class="equation">
+            \[
+            \theta_2(t) = \omega_2 t
+            \]
+        </div>
+        <p>Key four-bar vector loop equation:</p>
+        <div class="equation">
+            \[
+            l_2 e^{i \theta_2} + l_3 e^{i \theta_3} = l_1 + l_4 e^{i \theta_4}
+            \]
+        </div>
+        <p>Wiper tip positions:</p>
+        <div class="equation">
+            \[
+            \begin{aligned}
+            \text{Wiper 1 tips:}\quad & P_{C,1}(t) = O_4 + l_5 \begin{bmatrix}\cos\theta_5 \\ \sin\theta_5\end{bmatrix} + \begin{bmatrix} 0 \\ \pm 400 \end{bmatrix} \\
+            \text{Wiper 2 tips:}\quad & P_{D,2}(t) = O_5 + l_5 \begin{bmatrix}\cos\theta_5 \\ \sin\theta_5\end{bmatrix} + \begin{bmatrix} 0 \\ \pm 400 \end{bmatrix}
+            \end{aligned}
+            \]
+        </div>
+    </div>
+
+    <div class="block">
+        <h2>Velocity Analysis</h2>
+        <p>Differentiating angles or positions numerically:</p>
+        <div class="equation">
+            \[
+            \dot{\theta}_{k} \approx \frac{\theta_{k+1} - \theta_{k-1}}{2 \Delta t}
+            \]
+        </div>
+        <p>Wiper tip linear velocities:</p>
+        <div class="equation">
+            \[
+            \mathbf{v}_\text{tip}(t) = \frac{\mathbf{P}_\text{tip}(t+\Delta t) - \mathbf{P}_\text{tip}(t-\Delta t)}{2 \Delta t}
+            \]
+        </div>
+    </div>
+
+    <div class="block">
+        <h2>Acceleration Analysis</h2>
+        <p>Numerical second difference:</p>
+        <div class="equation">
+            \[
+            \ddot{\theta}_{k} \approx \frac{\theta_{k+1} - 2\theta_{k} + \theta_{k-1}}{(\Delta t)^2}
+            \]
+        </div>
+        <div class="equation">
+            \[
+            \mathbf{a}_\text{tip}(t) = \frac{\mathbf{P}_\text{tip}(t+\Delta t) - 2\mathbf{P}_\text{tip}(t) + \mathbf{P}_\text{tip}(t-\Delta t)}{(\Delta t)^2}
+            \]
+        </div>
+    </div>
+
+    <div class="block">
+        <h3>Definitions:</h3>
+        <ul>
+            <li>\( l_1, l_2, l_3, l_4, l_5 \): Link lengths as in your configuration</li>
+            <li>\( O_4, O_5 \): Ground pivots (with 900 offset between wipers)</li>
+            <li>\( \theta_2 \): Input crank angle</li>
+            <li>\( \Delta t \): Time step between animation or calculation steps</li>
+            <li>\( \omega_2 \): Constant input angular speed</li>
+            <li>All x/y positions and angles are measured as per your mechanism design</li>
+        </ul>
+    </div>
+</body>
+</html>
